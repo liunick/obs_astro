@@ -4,7 +4,7 @@ import math, sys
 
 base = 'https://api.astrocats.space/'
 b_conditional = '/photometry/time+magnitude+e_magnitude+band?format=csv&band=B'
-data = pd.read_csv('https://api.astrocats.space/catalog/claimedtype?claimedtype=Ia-(.*)&format=csv', error_bad_lines=False)
+data = pd.read_csv('https://api.astrocats.space/catalog/lumdist+claimedtype?claimedtype=Ia-(.*)&format=csv', error_bad_lines=False)
 
 # constants
 interpolation_constant = 5
@@ -15,12 +15,12 @@ b_band_error_margin = 0.3
 band_magnitude = "b"
 
 def calc_absolute_magnitude(lumdist, app_mag):
-    return app_mag - (5 * (log10(lumdist) - 1))
+    return app_mag - (5 * (math.log10(lumdist*1000000) - 1))
 
 def calc_apparent_magnitude(lumdist, abs_mag):
-    return abs_mag + (5 * (log10(lumdist) - 1))
+    return abs_mag + (5 * (math.log10(lumdist*1000000) - 1))
 
-def calc_phillips_expected_mag(band_mag_15):
+def calc_phillips_expected_mag(lumdist, band_mag_15):
     """
     Calculate expected b-band peak absolute magnitude based on the band's magnitude after 15 days
     using the Phillips relationship
@@ -29,8 +29,9 @@ def calc_phillips_expected_mag(band_mag_15):
     """
     a = -21.726
     b = 2.698
+    band_absolute_mag = calc_absolute_magnitude(lumdist, band_mag_15)
     expected_mag = a + b * band_mag_15
-    return expected_mag
+    return calc_apparent_magnitude(lumdist, expected_mag)
 
 def interpolate(date1, mag1, date2, mag2, date15):
     """
@@ -59,9 +60,9 @@ def filter_time_accurate():
     Find list of supernova that fit light curve requirements
     """
     time_accurate_sne = []
-    for sn in data["event"]:
+    for sn in data[["event", "lumdist"]].values:
         #Get data - convert columns to numerical values
-        sn_data = pd.read_csv(base + sn + b_conditional)
+        sn_data = pd.read_csv(base + sn[0] + b_conditional)
         sn_data['magnitude'] = pd.to_numeric(sn_data['magnitude'])
         time_criteria = False
         
@@ -112,16 +113,17 @@ def filter_time_accurate():
             ):
 
                 mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + phillips_delta)
-                print("Currently observing: " + str(sn))
+                print("Currently observing: " + str(sn[0]))
                 print("\tInterpolated mag: " + str(mag15))
                 print("\tPeak mag: " + str(peak_mag))
-                print("\tExpected mag: " + str(calc_phillips_expected_mag(abs(mag15 - peak_mag))))
+                print("\tLumdist: " + str(sn[1]))
+                print("\tExpected mag: " + str(calc_phillips_expected_mag(sn[1], mag15 - peak_mag)))
                 sys.stdout.flush()
 
 
         #All evaluated supernovae satisfy criteria #1
         if time_criteria:
-            time_accurate_sne.append(sn)
+            time_accurate_sne.append(sn[0])
             
     print("Total SNe that satisfy light curve requirements: " + str(len(time_accurate_sne)))
     print("List of SNe that satisfy light curves")
