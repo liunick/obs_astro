@@ -14,15 +14,23 @@ b_band_error_margin = 0.3
 
 band_magnitude = "b"
 
+def calc_absolute_magnitude(lumdist, app_mag):
+    return app_mag - (5 * (log10(lumdist) - 1))
 
+def calc_apparent_magnitude(lumdist, abs_mag):
+    return abs_mag + (5 * (log10(lumdist) - 1))
 
 def calc_phillips_expected_mag(band_mag_15):
     """
-    Calculate expected b-band peak magnitude based on the band's magnitude after 15 days
+    Calculate expected b-band peak absolute magnitude based on the band's magnitude after 15 days
     using the Phillips relationship
 
     band_mag_15 -- the band's magnitude 15 days after the peak 
     """
+    a = -21.726
+    b = 2.698
+    expected_mag = a + b * band_mag_15
+    return expected_mag
 
 def interpolate(date1, mag1, date2, mag2, date15):
     """
@@ -104,8 +112,10 @@ def filter_time_accurate():
             ):
 
                 mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + phillips_delta)
+                print("Currently observing: " + str(sn))
                 print("\tInterpolated mag: " + str(mag15))
                 print("\tPeak mag: " + str(peak_mag))
+                print("\tExpected mag: " + str(calc_phillips_expected_mag(abs(mag15 - peak_mag))))
                 sys.stdout.flush()
 
 
