@@ -10,7 +10,7 @@ data = pd.read_csv('https://api.astrocats.space/catalog/lumdist+claimedtype?clai
 interpolation_constant = 5
 continuity_constant = 20
 phillips_delta = 15
-b_band_error_margin = 0.3
+b_band_error_margin = 0.8
 
 band_magnitude = "b"
 
@@ -29,9 +29,11 @@ def calc_phillips_expected_mag(lumdist, band_mag_15):
     """
     a = -21.726
     b = 2.698
-    band_absolute_mag = calc_absolute_magnitude(lumdist, band_mag_15)
     expected_mag = a + b * band_mag_15
     return calc_apparent_magnitude(lumdist, expected_mag)
+
+def within_margin(margin, actual, expected):
+    return actual < expected + margin and actual > expected - margin
 
 def interpolate(date1, mag1, date2, mag2, date15):
     """
@@ -61,15 +63,12 @@ def filter_time_accurate():
     """
     time_accurate_sne = []
     for sn in data[["event", "lumdist"]].values:
+
         #Get data - convert columns to numerical values
         sn_data = pd.read_csv(base + sn[0] + b_conditional)
         sn_data['magnitude'] = pd.to_numeric(sn_data['magnitude'])
         time_criteria = False
-        
-        sne_obj = {}
-        
-        # print("Currently looking at: " + str(sn))
-        sys.stdout.flush()
+        margin_criteria = False
 
         #check for criteria number #1
         if not sn_data["magnitude"].empty:
@@ -100,10 +99,6 @@ def filter_time_accurate():
                 elif curr_delta < 0 and curr_delta > pos_delta:
                     pos_delta_time_tracker = [reading[0], reading[1]]
 
-            # print("\tCurr neg: [" + str(neg_delta_time_tracker[0]) + ", " + str(neg_delta_time_tracker[1]) + "]")
-            # print("\tCurr pos: [" + str(pos_delta_time_tracker[0]) + ", " + str(pos_delta_time_tracker[1]) + "]")
-            # sys.stdout.flush()
-
             #linearly interpolate between 2 points to reach mag15
             if (
                 neg_delta_time_tracker[0] is not None and
@@ -111,24 +106,32 @@ def filter_time_accurate():
                 pos_delta_time_tracker[0] is not None and
                 pos_delta_time_tracker[1] is not None
             ):
-
+                
                 mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + phillips_delta)
+                expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag)
+                margin_criteria = within_margin(b_band_error_margin, peak_mag, expected_mag)
                 print("Currently observing: " + str(sn[0]))
                 print("\tInterpolated mag: " + str(mag15))
                 print("\tPeak mag: " + str(peak_mag))
                 print("\tLumdist: " + str(sn[1]))
-                print("\tExpected mag: " + str(calc_phillips_expected_mag(sn[1], mag15 - peak_mag)))
+                print("\tExpected mag: " + str(expected_mag))
                 sys.stdout.flush()
 
 
         #All evaluated supernovae satisfy criteria #1
         if time_criteria:
-            time_accurate_sne.append(sn[0])
+            time_accurate_sne.append([sn[0], margin_criteria])
             
-    print("Total SNe that satisfy light curve requirements: " + str(len(time_accurate_sne)))
+    within_margin_ratio = 0
     print("List of SNe that satisfy light curves")
     for sn in time_accurate_sne:
-        print(sn)    
+        if sn[1]:
+            within_margin_ratio += 1
+        print(sn[0])
+    total_number_of_sne = len(time_accurate_sne)
+    print("--------------------------------------------------------")    
+    print("Total SNe that satisfy light curve requirements: " + str(total_number_of_sne))
+    print("Percentage of SNe that satisfy B-band error on expected peak mag: " + str(within_margin_ratio/total_number_of_sne))
     return time_accurate_sne
 
 def run():
