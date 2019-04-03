@@ -59,7 +59,7 @@ def filter_time_accurate():
         
         sne_obj = {}
         
-        print("Currently looking at: " + str(sn))
+        # print("Currently looking at: " + str(sn))
         sys.stdout.flush()
 
         #check for criteria number #1
@@ -67,6 +67,7 @@ def filter_time_accurate():
             neg_delta_time_tracker = [-float("inf"), None]
             pos_delta_time_tracker = [float("inf"), None]
             # Find time at highest magnitude
+            peak_mag = sn_data["magnitude"].min()
             peak_index = sn_data["magnitude"].idxmin()
             peak_time = np.floor(sn_data.at[peak_index, 'time'])
             curr_time = peak_time
@@ -104,6 +105,7 @@ def filter_time_accurate():
 
                 mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + phillips_delta)
                 print("\tInterpolated mag: " + str(mag15))
+                print("\tPeak mag: " + str(peak_mag))
                 sys.stdout.flush()
 
 
