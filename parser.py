@@ -11,7 +11,6 @@ I_CONDITIONAL = '/photometry/time+magnitude+e_magnitude+band?format=csv&band=I'
 BAND_CONDITIONALS = [B_CONDITIONAL, V_CONDITIONAL, I_CONDITIONAL]
 DATA = pd.read_csv('https://api.astrocats.space/catalog/lumdist+claimedtype?claimedtype=Ia-(.*)&format=csv', error_bad_lines=False)
 
-
 B_BAND = 0
 V_BAND = 1
 I_BAND = 2
@@ -27,23 +26,36 @@ INTERPOLATION_CONSTANT = 5
 CONTINUITY_CONSTANT = 20
 PHILLIPS_DELTA = 15
 
+B_BAND_A = -21.726
+B_BAND_B = 2.698
+V_BAND_A = -20.883
+V_BAND_B = 1.949
+I_BAND_A = -19.591
+I_BAND_B = 1.076
+
 def calc_absolute_magnitude(lumdist, app_mag):
     return app_mag - (5 * (math.log10(lumdist*1000000) - 1))
 
 def calc_apparent_magnitude(lumdist, abs_mag):
     return abs_mag + (5 * (math.log10(lumdist*1000000) - 1))
 
-def calc_phillips_expected_mag(lumdist, band_mag_15):
+def calc_phillips_expected_mag(lumdist, band_mag_15, band_type):
     """
     Calculate expected b-band peak absolute magnitude BASEd on the band's magnitude after 15 days
     using the Phillips relationship
 
     band_mag_15 -- the band's magnitude 15 days after the peak 
     """
-    a = -21.726
-    b = 2.698
-    expected_mag = a + b * band_mag_15
+    expected_mag = 0
+    if band_type == B_BAND:
+        expected_mag = B_BAND_A + B_BAND_B * band_mag_15
+        
+    elif band_type == V_BAND:
+        expected_mag = V_BAND_A + V_BAND_B * band_mag_15
+    else:
+        expected_mag = I_BAND_A + I_BAND_B * band_mag_15
     return calc_apparent_magnitude(lumdist, expected_mag)
+    
 
 def within_margin(margin, actual, expected):
     return actual < expected + margin and actual > expected - margin
@@ -104,7 +116,7 @@ def check_criteria(sn, sn_data, band_type):
             pos_delta_time_tracker[1] is not None
         ):
             mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + PHILLIPS_DELTA)
-            expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag)
+            expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag, band_type)
             criteria[1] = within_margin(BAND_ERROR_MARGINS[band_type], peak_mag, expected_mag)
             print("Currently observing: " + str(sn[0]))
             print("\tInterpolated mag: " + str(mag15))
