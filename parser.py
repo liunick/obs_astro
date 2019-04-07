@@ -52,7 +52,7 @@ def calc_phillips_expected_mag(lumdist, band_mag_15, band_type):
         
     elif band_type == V_BAND:
         expected_mag = V_BAND_A + V_BAND_B * band_mag_15
-    else:
+    elif band_type == I_BAND:
         expected_mag = I_BAND_A + I_BAND_B * band_mag_15
     return calc_apparent_magnitude(lumdist, expected_mag)
     
@@ -77,7 +77,7 @@ def interpolate(date1, mag1, date2, mag2, date15):
     mag_delta = slope * days_to_15
     return mag1 + mag_delta
     
-def check_criteria(sn, sn_data, band_type):
+def check_criteria(sn, sn_data, band_type, f):
 
     """
     Checks whether a certain supernova fits the time and margin criteria for a specific
@@ -137,6 +137,13 @@ def check_criteria(sn, sn_data, band_type):
             print("\tLumdist: " + str(sn[1]))
             print("\tExpected mag: " + str(expected_mag))
             sys.stdout.flush()
+
+            f.write(str(sn[0]))
+            f.write("\tInterpolated mag: " + str(mag15))
+            f.write("\tPeak mag: " + str(peak_mag))
+            f.write("\tLumdist: " + str(sn[1]))
+            f.write("\tExpected mag: " + str(expected_mag) + "\n")
+            
     return criteria
 
 def run():
@@ -147,12 +154,14 @@ def run():
     v_criteria_sne = []
     i_criteria_sne = []
     
+    f = open("output.txt", "w+")
+
     for sn in DATA[["event", "lumdist"]].values:
         for band in BANDS:
             #Get data - convert columns to numerical values
             sn_data = pd.read_csv(BASE + sn[0] + BAND_CONDITIONALS[band])
             sn_data['magnitude'] = pd.to_numeric(sn_data['magnitude'])
-            time_criteria, margin_criteria = check_criteria(sn, sn_data, band)
+            time_criteria, margin_criteria = check_criteria(sn, sn_data, band, f)
 
             #All evaluated supernovae satisfy criteria #1
             if time_criteria:
@@ -162,6 +171,8 @@ def run():
                     v_criteria_sne.append([sn[0], margin_criteria])
                 elif band == I_BAND:
                     i_criteria_sne.append([sn[0], margin_criteria])
+
+    f.close()
     
     criteria_sne = [b_criteria_sne, v_criteria_sne, i_criteria_sne]
     for band in BANDS:
