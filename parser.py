@@ -69,6 +69,8 @@ def interpolate(date1, mag1, date2, mag2, date15):
     date2   -- date of second mag reading
     mag2    -- value of second mag reading
     date15  -- exact date of 15 days after peak
+
+    Returns magnitude at 15 day mark
     """
     slope = (mag2 - mag1) / (date2 - date1)
     days_to_15 = date15 - date1
@@ -76,8 +78,19 @@ def interpolate(date1, mag1, date2, mag2, date15):
     return mag1 + mag_delta
     
 def check_criteria(sn, sn_data, band_type):
+
+    """
+    Checks whether a certain supernova fits the time and margin criteria for a specific
+    band magnitude
+
+    sn          -- [name, lumdist] of the supernova event
+    sn_data     -- Magnitudes of the supernova
+    band_type   -- Band type that correspondes to the sought after band magnitude
+
+    Returns an array of booleans: [time_criteria, margin_criteria]
+    """
+
     criteria = [False, False]
-    #check for criteria number #1
     if not sn_data["magnitude"].empty:
         neg_delta_time_tracker = [-float("inf"), None]
         pos_delta_time_tracker = [float("inf"), None]
@@ -128,7 +141,7 @@ def check_criteria(sn, sn_data, band_type):
 
 def run():
     """
-    Find list of supernova that fit light curve requirements
+    Finds the list of supernova names and iterate through all sought after band magnitudes. Calculates the percentage of supernova that pass criteria set by Phillips' paper.
     """
     b_criteria_sne = []
     v_criteria_sne = []
