@@ -77,8 +77,26 @@ def interpolate(date1, mag1, date2, mag2, date15):
     mag_delta = slope * days_to_15
     return mag1 + mag_delta
     
-def check_criteria(sn, sn_data, band_type, f):
+def output(sn, mag15, peak_mag, expected_mag, band_type, f):
+    """
+    Print 
 
+    """
+    print("Currently observing: " + str(sn[0]) + " on band type: " + BAND_LABELS[band_type])
+    print("\tInterpolated mag: " + str(mag15))
+    print("\tPeak mag: " + str(peak_mag))
+    print("\tLumdist: " + str(sn[1]))
+    print("\tExpected mag: " + str(expected_mag))
+    sys.stdout.flush()
+
+    f.write(str(sn[0]))
+    f.write("\t\t" + BAND_LABELS[band_type])
+    f.write("\t\t" + str(mag15))
+    f.write("\t\t" + str(peak_mag))
+    f.write("\t\t" + str(sn[1]))
+    f.write("\t\t" + str(expected_mag) + "\n")
+
+def check_criteria(sn, sn_data, band_type, f):
     """
     Checks whether a certain supernova fits the time and margin criteria for a specific
     band magnitude
@@ -89,7 +107,6 @@ def check_criteria(sn, sn_data, band_type, f):
 
     Returns an array of booleans: [time_criteria, margin_criteria]
     """
-
     criteria = [False, False]
     if not sn_data["magnitude"].empty:
         neg_delta_time_tracker = [-float("inf"), None]
@@ -131,19 +148,7 @@ def check_criteria(sn, sn_data, band_type, f):
             mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + PHILLIPS_DELTA)
             expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag, band_type)
             criteria[1] = within_margin(BAND_ERROR_MARGINS[band_type], peak_mag, expected_mag)
-            print("Currently observing: " + str(sn[0]))
-            print("\tInterpolated mag: " + str(mag15))
-            print("\tPeak mag: " + str(peak_mag))
-            print("\tLumdist: " + str(sn[1]))
-            print("\tExpected mag: " + str(expected_mag))
-            sys.stdout.flush()
-
-            f.write(str(sn[0]))
-            f.write("\tInterpolated mag: " + str(mag15))
-            f.write("\tPeak mag: " + str(peak_mag))
-            f.write("\tLumdist: " + str(sn[1]))
-            f.write("\tExpected mag: " + str(expected_mag) + "\n")
-            
+            output(sn, mag15, peak_mag, expected_mag, band_type, f)
     return criteria
 
 def run():
