@@ -77,9 +77,8 @@ def interpolate(date1, mag1, date2, mag2, date15):
     mag_delta = slope * days_to_15
     return mag1 + mag_delta
     
-def output(sn, mag15, peak_mag, expected_mag, band_type, f):
+def output(sn, mag15, peak_mag, expected_mag, band_type, f, f_b, f_v, f_i):
     """
-    Print 
 
     """
     print("Currently observing: " + str(sn[0]) + " on band type: " + BAND_LABELS[band_type])
@@ -95,8 +94,19 @@ def output(sn, mag15, peak_mag, expected_mag, band_type, f):
     f.write("\t\t" + str(peak_mag))
     f.write("\t\t" + str(sn[1]))
     f.write("\t\t" + str(expected_mag) + "\n")
-
-def check_criteria(sn, sn_data, band_type, f):
+    band_writer = None
+    if band_type == B_BAND:
+        band_writer = f_b
+    elif band_type == V_BAND:
+        band_writer = f_v
+    else:
+        band_writer = f_i
+    
+    band_writer.write(str(sn[0]))
+    band_writer.write("," + str(calc_absolute_magnitude(sn[1], peak_mag)))
+    band_writer.write("," + str(calc_absolute_magnitude(sn[1], mag15)) + "\n")
+    
+def check_criteria(sn, sn_data, band_type, f, f_b, f_v, f_i):
     """
     Checks whether a certain supernova fits the time and margin criteria for a specific
     band magnitude
@@ -148,7 +158,7 @@ def check_criteria(sn, sn_data, band_type, f):
             mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + PHILLIPS_DELTA)
             expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag, band_type)
             criteria[1] = within_margin(BAND_ERROR_MARGINS[band_type], peak_mag, expected_mag)
-            output(sn, mag15, peak_mag, expected_mag, band_type, f)
+            output(sn, mag15, peak_mag, expected_mag, band_type, f, f_b, f_v, f_i)
     return criteria
 
 def run():
@@ -160,13 +170,19 @@ def run():
     i_criteria_sne = []
     
     f = open("output.txt", "w+")
+    f_b = open("b_band.csv", "w+")
+    f_b.write("SN_id,peak_mag,15_mag\n")
+    f_v = open("v_band.csv", "w+")
+    f_v.write("SN_id,peak_mag,15_mag\n")
+    f_i = open("i_band.csv", "w+")
+    f_i.write("SN_id,peak_mag,15_mag\n")
 
     for sn in DATA[["event", "lumdist"]].values:
         for band in BANDS:
             #Get data - convert columns to numerical values
             sn_data = pd.read_csv(BASE + sn[0] + BAND_CONDITIONALS[band])
             sn_data['magnitude'] = pd.to_numeric(sn_data['magnitude'])
-            time_criteria, margin_criteria = check_criteria(sn, sn_data, band, f)
+            time_criteria, margin_criteria = check_criteria(sn, sn_data, band, f, f_b, f_v, f_i)
 
             #All evaluated supernovae satisfy criteria #1
             if time_criteria:
@@ -178,6 +194,9 @@ def run():
                     i_criteria_sne.append([sn[0], margin_criteria])
 
     f.close()
+    f_b.close()
+    f_v.close()
+    f_i.close()
     
     criteria_sne = [b_criteria_sne, v_criteria_sne, i_criteria_sne]
     for band in BANDS:
