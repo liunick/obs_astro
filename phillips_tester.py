@@ -33,11 +33,35 @@ V_BAND_B = 1.949
 I_BAND_A = -19.591
 I_BAND_B = 1.076
 
+NEW_B_BAND_A = -19.286
+NEW_B_BAND_B = 1.257
+NEW_V_BAND_A = -19.345
+NEW_V_BAND_B = 1.509
+NEW_I_BAND_A = -19.029
+NEW_I_BAND_B = 1.428
+
 def calc_absolute_magnitude(lumdist, app_mag):
     return app_mag - (5 * (math.log10(lumdist*1000000) - 1))
 
 def calc_apparent_magnitude(lumdist, abs_mag):
     return abs_mag + (5 * (math.log10(lumdist*1000000) - 1))
+
+def calc_new_regression_expected_mag(lumdist, band_mag_15, band_type):
+    """
+    Calculate expected b-band peak absolute magnitude based on the band's magnitude after 15 days
+    using new OLS regression
+
+    band_mag_15 -- the band's magnitude 15 days after the peak 
+    """
+    expected_mag = 0
+    if band_type == B_BAND:
+        expected_mag = NEW_B_BAND_A + NEW_B_BAND_B * band_mag_15
+        
+    elif band_type == V_BAND:
+        expected_mag = NEW_V_BAND_A + NEW_V_BAND_B * band_mag_15
+    elif band_type == I_BAND:
+        expected_mag = NEW_I_BAND_A + NEW_I_BAND_B * band_mag_15
+    return calc_apparent_magnitude(lumdist, expected_mag)
 
 def calc_phillips_expected_mag(lumdist, band_mag_15, band_type):
     """
@@ -156,7 +180,7 @@ def check_criteria(sn, sn_data, band_type, f, f_b, f_v, f_i):
             pos_delta_time_tracker[1] is not None
         ):
             mag15 = interpolate(neg_delta_time_tracker[0], neg_delta_time_tracker[1], pos_delta_time_tracker[0], pos_delta_time_tracker[1], peak_time + PHILLIPS_DELTA)
-            expected_mag = calc_phillips_expected_mag(sn[1], mag15 - peak_mag, band_type)
+            expected_mag = calc_new_regression_expected_mag(sn[1], mag15 - peak_mag, band_type)
             criteria[1] = within_margin(BAND_ERROR_MARGINS[band_type], peak_mag, expected_mag)
             output(sn, mag15, peak_mag, expected_mag, band_type, f, f_b, f_v, f_i)
     return criteria
@@ -169,12 +193,12 @@ def run():
     v_criteria_sne = []
     i_criteria_sne = []
     
-    f = open("output.txt", "w+")
-    f_b = open("b_band.csv", "w+")
+    f = open("output/output.txt", "w+")
+    f_b = open("output/b_band.csv", "w+")
     f_b.write("SN_id,peak_mag,15_mag\n")
-    f_v = open("v_band.csv", "w+")
+    f_v = open("output/v_band.csv", "w+")
     f_v.write("SN_id,peak_mag,15_mag\n")
-    f_i = open("i_band.csv", "w+")
+    f_i = open("output/i_band.csv", "w+")
     f_i.write("SN_id,peak_mag,15_mag\n")
 
     for sn in DATA[["event", "lumdist"]].values:
